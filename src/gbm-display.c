@@ -502,7 +502,7 @@ eGbmChooseConfigHook(EGLDisplay dpy,
     }
 
     for (nAttribs = 0, nNewAttribs = 0;
-         attribs[nAttribs] != EGL_NONE;
+         attribs && attribs[nAttribs] != EGL_NONE;
          nAttribs += 2) {
         /*
          * Convert all instances of EGL_WINDOW_BIT in an EGL_SURFACE_TYPE
@@ -546,6 +546,11 @@ eGbmChooseConfigHook(EGLDisplay dpy,
     newAttribs[nNewAttribs] = EGL_NONE;
 
     if (nativeVisual != EGL_DONT_CARE) {
+        if (!numConfig) {
+            err = EGL_BAD_PARAMETER;
+            goto done;
+        }
+
         /*
          * Need to query *all* configs that match everything but the specified
          * native visual ID, then filter them down based on visual ID before
@@ -557,12 +562,18 @@ eGbmChooseConfigHook(EGLDisplay dpy,
                                      0,
                                      &nNewConfigs);
 
-        if (!ret || !*numConfig) goto done;
+        if (!ret) goto done;
 
-        newConfigs = malloc(sizeof(EGLConfig) * *numConfig);
+        if (nNewConfigs <= 0) {
+            *numConfig = 0;
+            goto done;
+        }
+
+        newConfigs = malloc(sizeof(EGLConfig) * nNewConfigs);
 
         if (!newConfigs) {
             err = EGL_BAD_ALLOC;
+            ret = EGL_FALSE;
             goto done;
         }
 
